@@ -1,15 +1,18 @@
 import sys
 import os
-if __name__ == '__main__':
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import asyncio
 import time
 from web3 import Web3
 from web3.exceptions import Web3RPCError
 from typing import List, Optional, Tuple, Any
-from contract_data import contract_data
-from utilities import send_message, save_user_wallet, write_log
+from bot.services.utilities import send_message, save_user_wallet
+
+from bot.services.logging_config import get_logger
+logger = get_logger("bot.main")
+
+from bot.services.utilities import load_blockchain_ressources
+contract_data = load_blockchain_ressources()
     
 def get_offers_multicall(w3: Web3, offer_ids: List[int]) -> List[List[Any]]:
     """
@@ -50,7 +53,7 @@ def get_offers_multicall(w3: Web3, offer_ids: List[int]) -> List[List[Any]]:
         if raw_offer[0]:
             decoded_offer = decode_multicall3_YAM_show_offer(raw_offer[1])
             offers.append(list(decoded_offer) + [offer_id])
-    write_log(f"multicall fetched for {len(offer_ids)} offer IDs. {len(offers)} offers successfully retrieved", "logfile/logfile_YAMSaleNotifyBot.txt")
+    logger.info(f"multicall fetched for {len(offer_ids)} offer IDs. {len(offers)} offers successfully retrieved")
    
     return offers
 
@@ -139,7 +142,7 @@ async def get_offer(w3: Web3, offer_id: int) -> Optional[List]:
                 sys.stderr = old_stderr
 
     except (ValueError, Web3RPCError) as e:
-        write_log(f"Exception in get_offer for offer id {offer_id}: {e}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger(f"Exception in get_offer for offer id {offer_id}: {e}")
         return None
 
 async def get_multiple_offers(w3: Web3, offer_ids: List[int]) -> List[Optional[List]]:
@@ -194,7 +197,7 @@ async def get_multiple_offers(w3: Web3, offer_ids: List[int]) -> List[Optional[L
         else:
             final_results.append([None, offer_id])
     
-    write_log(f"{len(final_results)} offers retrieved from w3 rpc", "logfile/logfile_YAMSaleNotifyBot.txt")
+    logger(f"{len(final_results)} offers retrieved from w3 rpc")
     
     return final_results
 

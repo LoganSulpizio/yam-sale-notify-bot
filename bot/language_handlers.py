@@ -1,7 +1,10 @@
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton, BotCommand, BotCommandScopeChat
 from telegram.ext import ContextTypes, ConversationHandler
-from utilities import translations, language_mapping, save_user_languages, send_message, write_log
+from bot.services.utilities import translations, language_mapping, save_user_languages, send_message
 import asyncio
+
+from bot.services.logging_config import get_logger
+logger = get_logger("bot.main")
 
 # Conversation states
 LANGUAGE_SELECTION = 1
@@ -57,7 +60,7 @@ async def handle_language_selection(update: Update, context: ContextTypes.DEFAUL
 
     if text in language_mapping:
         user_languages[user_id] = language_mapping[text]
-        write_log(f"user {user_id} has set its language to {language_mapping[text]}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.info(f"user {user_id} has set its language to {language_mapping[text]}")
         save_user_languages(user_languages)  # Save the updated preferences
         language_set_message = translate(user_id, 'language_set')
         await query.answer()  # Acknowledge the callback
@@ -108,6 +111,6 @@ def reinitialize_user_commands(context):
             loop.run_until_complete(context.bot.set_my_commands(commands, scope=BotCommandScopeChat(user_id)))
         except Exception as e:
             # Log the exception (you can customize this to your logging system)
-            write_log(f"Failed to initialize commands for user {user_id}: {e}", "logfile/logfile_YAMSaleNotifyBot.txt")
+            logger.error(f"Failed to initialize commands for user {user_id}: {e}")
             # Skip to the next user if an error occurs
             continue

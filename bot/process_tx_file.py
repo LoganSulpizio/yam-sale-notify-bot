@@ -4,13 +4,15 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from telegram import Update
 from telegram.ext import ContextTypes
-from contract_data import contract_data
-from language_handlers import translate
-from utilities import send_message, write_log
+from bot.language_handlers import translate
+from bot.services.utilities import send_message, load_blockchain_ressources
 import json
-#import shutil
+
+from bot.services.logging_config import get_logger
+logger = get_logger("bot.main")
+
+contract_data = load_blockchain_ressources()
 
 
 # Read the tx json files
@@ -105,7 +107,7 @@ def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict
                                     )
                 message_list.append(message)
 
-    write_log(f"{tx_hash} has been processed", "logfile/logfile_YAMSaleNotifyBot.txt")
+    logger.info(f"{tx_hash} has been processed")
     
     # delete file when it has been processed
     os.remove(path_file_event)
@@ -134,7 +136,7 @@ async def handle_tx_and_send_messages(path_file_event: str, user_wallets: dict, 
     for user_id, message in zip(user_id_list, message_list):
         # Directly use chat_id to send the message
         await send_message(user_id, context, text=message)
-        write_log(f"Sale alert sent to {user_id}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.info(f"Sale alert sent to {user_id}")
         
 def get_token_decimals(token_address):
         for token_name, data in contract_data.items():
@@ -162,11 +164,11 @@ async def check_for_new_sales_event(context: ContextTypes.DEFAULT_TYPE):
                 await handle_tx_and_send_messages(path_file_event, user_wallets, DataProperty, context)
     
     except FileNotFoundError as e:
-        write_log(f"FileNotFoundError: {e}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.error(f"FileNotFoundError: {e}")
         raise FileNotFoundError(f"The folder '{path_transaction_queue_folder}' does not exist.")
         
 if __name__ == '__main__':
-    from utilities import compute_path, load_user_wallet, load_DataProperty
+    from bot.services.utilities import compute_path, load_user_wallet, load_DataProperty
     user_wallets = load_user_wallet()
     DataProperty = load_DataProperty()
     path = compute_path(['DeFi', 'TelegramBot', 'YAMSaleNotifyBot', 'transactions_queue', '0x1b0d94d6567c02e40f018b683a87a7fec670e1b5a75c38588b5282ab0c159b49.json'])

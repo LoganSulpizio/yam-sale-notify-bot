@@ -1,9 +1,5 @@
-if __name__ == '__main__':
-    import sys
-    import os
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
-from contract_data import contract_data
+from bot.services.utilities import load_blockchain_ressources
+contract_data = load_blockchain_ressources()
 
 def handle_raw_offer(raw_offer: list, DataProperty: dict):
 
@@ -41,7 +37,7 @@ if __name__ == '__main__':
     from web3 import Web3
     from web3.exceptions import Web3RPCError
     from YAM_DB_handlers.get_all_offer_ids_by_seller import get_all_offer_ids_by_seller
-    from contract_data import contract_data
+    from bot._contract_data import contract_data
     from w3_interaction.get_offer import get_multiple_offers
     import asyncio
     
