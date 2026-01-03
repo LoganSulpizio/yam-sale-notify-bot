@@ -3,6 +3,7 @@ import os
 import requests
 from web3 import Web3
 from bot.config.settings import USER_PREF_LANGUAGE_FILE, USER_WALLET_FILE, BLOCKCHAIN_RESSOURCES, TRANSLATIONS_PATH
+from typing import Any, Dict, List, Optional
 
 # Language mapping dictionary
 language_mapping = {
@@ -22,11 +23,7 @@ def load_blockchain_ressources():
     with open(BLOCKCHAIN_RESSOURCES, 'r', encoding='utf-8') as file:
         return json.load(file)
 
-#def load_db_path():
-#    with open('config.json', 'r', encoding='utf-8') as file:
-#        config = json.load(file)
-#        return config['db_path']
-#
+
 def load_w3():
     with open('config.json', 'r', encoding='utf-8') as file:
         config = json.load(file)
@@ -66,6 +63,32 @@ async def send_message(chat_id: int, context, text: str):
     }
     await context.bot.send_message(chat_id=chat_id, text=text, **params)
 
+def list_to_dict_by_uuid(items: Optional[List[Dict[str, Any]]]) -> Optional[Dict[str, Dict[str, Any]]]:
+    """
+    Convert a list of dictionaries into a dictionary keyed by the 'uuid' value.
+
+    Args:
+        items: A list of dictionaries, each expected to contain a 'uuid' key.
+               If None, returns None.
+
+    Returns:
+        - None if input is None.
+        - Otherwise, a dictionary where:
+            * Keys are the 'uuid' values from the input dictionaries.
+            * Values are the corresponding full dictionaries from the list.
+        Entries without a 'uuid' key or with a falsy 'uuid' value are ignored.
+    """
+    if items is None:
+        return None
+
+    result: Dict[str, Dict[str, Any]] = {}
+    for item in items:
+        uuid = item.get("uuid")
+        if not uuid:
+            continue
+        result[uuid.lower()] = item
+    return result
+
 def compute_path(path_components: list):
 
     # Get the system drive dynamically
@@ -75,29 +98,3 @@ def compute_path(path_components: list):
     path = os.path.join(working_drive, os.sep, *path_components)
 
     return path
-
-def load_DataProperty():
-    with open('config.json', 'r', encoding='utf-8') as file:
-        config = json.load(file)
-    path_DataProperty = config['DataProteryPath']
-    
-    with open(path_DataProperty, 'r') as file:
-        data_dict = json.load(file)
-    # Iterate through the dictionary and remove the key 'gnosisImplementationContractAbi'
-    for key in data_dict:
-        if 'gnosisImplementationContractAbi' in data_dict[key]:
-            del data_dict[key]['gnosisImplementationContractAbi']
-    #write_log("DataProperty loaded successfully", "logfile/logfile_YAMSaleNotifyBot.txt")
-    return data_dict
-
-async def reload_DataProperty(context):
-    try:
-        new_data_property = load_DataProperty()
-        
-        # Update the DataProperty in the job's context
-        context.job.data['DataProperty'].update(new_data_property)
-
-    except Exception as e:
-        pass
-        # Log any failure during the update
-        #write_log(f"Failed to reload DataProperty: {str(e)}", "logfile/logfile_YAMSaleNotifyBot.txt")

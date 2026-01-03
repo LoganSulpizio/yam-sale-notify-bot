@@ -1,7 +1,7 @@
 from bot.services.utilities import load_blockchain_ressources
 contract_data = load_blockchain_ressources()
 
-def handle_raw_offer(raw_offer: list, DataProperty: dict):
+def handle_raw_offer(raw_offer: list, realtoken_data: dict):
 
     if raw_offer[0] is None:
         return raw_offer
@@ -16,7 +16,7 @@ def handle_raw_offer(raw_offer: list, DataProperty: dict):
     if raw_offer[1] in [contract['address'] for contract in contract_data.values() if 'address' in contract]:
         buyer_token = next((key for key, contract in contract_data.items() if contract.get('address') == raw_offer[1]), None)
 
-        offer['offer_token'] = DataProperty[raw_offer[0]]['shortName']
+        offer['offer_token'] = realtoken_data[raw_offer[0].lower()]['shortName']
         offer['buyer_token'] = buyer_token
 
         decimals_realtoken = 18

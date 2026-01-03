@@ -7,6 +7,8 @@ DEFAULT_LANGUAGE = "English"  # Fallback language
 # RealToken public endpoints
 REALTOKENS_LIST_URL = "https://api.realtoken.community/v1/token"
 
+FRENQUENCY_UPDATING_REALTOKEN_DATA = 2 # in days
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 TRANSLATIONS_PATH = PROJECT_ROOT / "translations" / "translations.json"
