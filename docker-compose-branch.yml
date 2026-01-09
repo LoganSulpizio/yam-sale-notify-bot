@@ -1,0 +1,17 @@
+services:
+  yam_sale_notify_bot:
+    image: ${DOCKER_REGISTRY}/yam-sale-notify-bot:latest
+    container_name: ${DOCKER_BRANCH}-yam_sale_notify_bot
+    environment:
+      RUNNING_IN_DOCKER: "1"
+      YAM_SALE_NOTIFY_BOT_TOKEN: "${YAM_SALE_NOTIFY_BOT_TOKEN}"
+      YAM_SALE_NOTIFY_RPC_URLS: "${YAM_SALE_NOTIFY_RPC_URLS}"
+      YAM_INDEXING_DB_PATH: "${YAM_INDEXING_DB_PATH}"
+      TELEGRAM_ALERT_BOT_TOKEN: "${TELEGRAM_ALERT_BOT_TOKEN}"
+      TELEGRAM_ALERT_GROUP_ID: "${TELEGRAM_ALERT_GROUP_ID}"
+    volumes:
+      - ${YAM_INDEXING_DB_PATH}:/app/yam_indexing_db/yam_events.db:ro
+      - ./logs:/app/logs
+      - ./user_configurations:/app/user_configurations
+      - ./transactions_queue:/app/transactions_queue
+    restart: unless-stopped
