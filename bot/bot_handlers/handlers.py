@@ -1,11 +1,14 @@
 from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 from eth_utils import is_address, to_checksum_address
-from YAM_DB_handlers.get_all_offer_ids_by_seller import get_all_offer_ids_by_seller
-from w3_interaction.get_offer import get_offers_multicall
-from offer_handlers.handle_raw_offer import handle_raw_offer
-from language_handlers import translate, get_user_languages, setlanguage
-from utilities import send_message, save_user_wallet, write_log
+from bot.yam_indexing_db_handler.get_all_offer_ids_by_seller import get_all_offer_ids_by_seller
+from bot.offer_handlers.get_offer import get_offers_multicall
+from bot.core.handle_raw_offer import handle_raw_offer
+from bot.bot_handlers.language_handlers import translate, get_user_languages, setlanguage
+from bot.services.utilities import send_message, save_user_wallet
+
+from bot.services.logging_config import get_logger
+logger = get_logger(__name__)
 
 # Conversation states
 WALLET_INPUT = 2
@@ -37,14 +40,18 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await send_message(user_id, context, about_message)
 
 # Function to handle the /getcurrentoffers command
-async def getcurrentoffers(update: Update, context: ContextTypes.DEFAULT_TYPE, DataProperty: dict, db_path:str, w3) -> None:
+async def getcurrentoffers(update: Update, context: ContextTypes.DEFAULT_TYPE, db_path:str) -> None:
+
+    # load from application realtoken data
+    realtoken_data = context.application.bot_data["realtokens"]
+
     user_id = update.effective_user.id
     user_wallet = user_wallets.get(user_id, None)
 
-    write_log(f"getcurrentoffers used by user {user_id}", "logfile/logfile_YAMSaleNotifyBot.txt")
+    logger.info(f"getcurrentoffers used by user {user_id}")
 
     offer_ids = get_all_offer_ids_by_seller(db_path, user_wallet, ['InProgress'])
-    raw_offers = get_offers_multicall(w3, offer_ids)
+    raw_offers = get_offers_multicall(offer_ids=offer_ids)
 
     message = '*' + translate(user_id, 'current_listed_offer') + '*'
     
@@ -52,7 +59,7 @@ async def getcurrentoffers(update: Update, context: ContextTypes.DEFAULT_TYPE, D
     total_number_of_token_at_sale = 0
 
     for raw_offer in raw_offers:
-        offer = handle_raw_offer(raw_offer, DataProperty)
+        offer = handle_raw_offer(raw_offer, realtoken_data)
         if isinstance(offer, dict) and offer['remaining_amount'] != 0:
             line = (
                 translate(user_id, 'id_icon') + f" [{offer['id']}](https://yambyofferid.netlify.app/?offerId={offer['id']}) " +
@@ -96,7 +103,7 @@ async def handle_wallet_input(update: Update, context: ContextTypes.DEFAULT_TYPE
         
         # Store the checksummed wallet address in the dictionary
         user_wallets[user_id] = checksummed_address
-        write_log(f"user {user_id} has set its wallet to {checksummed_address}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.info(f"user {user_id} has set its wallet to {checksummed_address}")
         save_user_wallet(user_wallets)
 
         wallet_set_message = translate(user_id, 'wallet_has_been_set')

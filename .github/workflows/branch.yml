@@ -1,0 +1,102 @@
+name: Test and deploy to branch
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  validate:
+    name: Validate branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      # Optionnel : tests
+      # - name: Run tests
+      #   run: pytest -q
+
+  deploy:
+    name: Deploy to branch
+    runs-on: ubuntu-latest
+    needs: validate
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Login to registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ secrets.DOCKER_REGISTRY }}
+          username: ${{ secrets.DOCKER_LOGIN }}
+          password: ${{ secrets.DOCKER_PASSWD }}
+
+      - name: Build and push yam-sale-notify-bot image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: Dockerfile
+          push: true
+          tags: ${{ secrets.DOCKER_REGISTRY }}/yam-sale-notify-bot:latest
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh/
+          echo "$SSH_KEY" > ~/.ssh/staging.key
+          chmod 600 ~/.ssh/staging.key
+          cat >>~/.ssh/config <<END
+          Host staging
+            HostName $SSH_HOST
+            User $SSH_USER
+            Port $SSH_PORT
+            IdentityFile ~/.ssh/staging.key
+            StrictHostKeyChecking no
+          END
+        env:
+          SSH_USER: ${{ secrets.SSH_USER }}
+          SSH_KEY: ${{ secrets.SSH_KEY }}
+          SSH_HOST: ${{ secrets.SSH_HOST }}
+          SSH_PORT: ${{ secrets.SSH_PORT }}
+
+      - name: Update branch environment
+        env:
+          DOCKER_BRANCH: ${{ github.ref_name }}
+          DOCKER_REGISTRY: ${{ secrets.DOCKER_REGISTRY }}
+          DOCKER_LOGIN: ${{ secrets.DOCKER_LOGIN }}
+          DOCKER_PASSWD: ${{ secrets.DOCKER_PASSWD }}
+
+          # App env (injected into remote shell then into docker compose)
+          YAM_SALE_NOTIFY_BOT_TOKEN: ${{ secrets.YAM_SALE_NOTIFY_BOT_TOKEN }}
+          YAM_SALE_NOTIFY_RPC_URLS: ${{ vars.YAM_SALE_NOTIFY_RPC_URLS }}
+          YAM_INDEXING_DB_PATH: ${{ vars.YAM_INDEXING_DB_PATH }}
+          TELEGRAM_ALERT_BOT_TOKEN: ${{ secrets.TELEGRAM_ALERT_BOT_TOKEN }}
+          TELEGRAM_ALERT_GROUP_ID: ${{ vars.TELEGRAM_ALERT_GROUP_ID }}
+        run: |
+          ssh staging <<EOF
+            set -euxo pipefail
+
+            export DOCKER_BRANCH="$DOCKER_BRANCH"
+            export DOCKER_REGISTRY="$DOCKER_REGISTRY"
+
+            export YAM_SALE_NOTIFY_BOT_TOKEN="$YAM_SALE_NOTIFY_BOT_TOKEN"
+            export YAM_SALE_NOTIFY_RPC_URLS="$YAM_SALE_NOTIFY_RPC_URLS"
+            export YAM_INDEXING_DB_PATH="$YAM_INDEXING_DB_PATH"
+            export TELEGRAM_ALERT_BOT_TOKEN="$TELEGRAM_ALERT_BOT_TOKEN"
+            export TELEGRAM_ALERT_GROUP_ID="$TELEGRAM_ALERT_GROUP_ID"
+
+            cd /var/docker/yam-sale-notify-bot/\$DOCKER_BRANCH
+            git pull origin $DOCKER_BRANCH
+            docker login -u "$DOCKER_LOGIN" -p "$DOCKER_PASSWD" $DOCKER_REGISTRY
+            docker compose --file docker-compose-branch.yml pull
+
+            docker compose --project-name $DOCKER_BRANCH-yam-sale-notify-bot --file docker-compose-branch.yml up -d
+          EOF

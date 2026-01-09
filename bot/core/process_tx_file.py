@@ -4,17 +4,19 @@ if __name__ == '__main__':
     import sys
     sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from telegram import Update
 from telegram.ext import ContextTypes
-from contract_data import contract_data
-from language_handlers import translate
-from utilities import send_message, write_log
+from bot.bot_handlers.language_handlers import translate
+from bot.services.utilities import send_message, load_blockchain_ressources
 import json
-#import shutil
+
+from bot.services.logging_config import get_logger
+logger = get_logger(__name__)
+
+contract_data = load_blockchain_ressources()
 
 
 # Read the tx json files
-def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict):
+def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: dict):
     
     with open(path_file_event, 'r') as file:
         data = json.load(file)
@@ -64,7 +66,7 @@ def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict
             price_dec_total = round(price_dec_per_token * amount_dec, 2)
             amount_dec = round(amount_dec, 2)
 
-            property_name = DataProperty.get(offerToken, {}).get('shortName', 'unknown token')
+            property_name = realtoken_data.get(offerToken.lower(), {}).get('shortName', 'unknown token')
 
             for user_id in user_id_list:
                 message = translate(user_id,
@@ -91,7 +93,7 @@ def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict
             price_dec_per_token = round(price_dec_per_token, 2)
             amount_dec = round(amount_dec, 2)
 
-            property_name = DataProperty.get(buyerToken, {}).get('shortName', 'unknown token')
+            property_name = realtoken_data.get(buyerToken.lower(), {}).get('shortName', 'unknown token')
 
             for user_id in user_id_list:
                 message = translate(user_id,
@@ -105,16 +107,10 @@ def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict
                                     )
                 message_list.append(message)
 
-    write_log(f"{tx_hash} has been processed", "logfile/logfile_YAMSaleNotifyBot.txt")
+    logger.info(f"{tx_hash} has been processed")
     
-    # delete file when it has been processed
+    # delete JSON file when it has been processed
     os.remove(path_file_event)
-
-    # Check if the destination file exists
-    #destination = os.path.join('logfile', os.path.basename(path_file_event))
-    #if os.path.exists(destination):
-    #    os.remove(destination)  # Remove the existing file
-    #shutil.move(path_file_event, 'logfile')
             
     if len(user_id_list) > 0:
         return user_id_list, message_list
@@ -124,8 +120,12 @@ def process_tx_file(path_file_event: str, user_wallets: dict, DataProperty: dict
         
 
 # Asynchronous function to send the messages
-async def handle_tx_and_send_messages(path_file_event: str, user_wallets: dict, DataProperty: dict, context: ContextTypes.DEFAULT_TYPE):
-    user_id_list, message_list = process_tx_file(path_file_event, user_wallets, DataProperty)
+async def handle_tx_and_send_messages(path_file_event: str, user_wallets: dict, context: ContextTypes.DEFAULT_TYPE):
+
+    # load from application realtoken data
+    realtoken_data = context.application.bot_data["realtokens"]
+    
+    user_id_list, message_list = process_tx_file(path_file_event, user_wallets, realtoken_data)
 
     # Check if the lists are None
     if user_id_list is None or message_list is None:
@@ -134,7 +134,7 @@ async def handle_tx_and_send_messages(path_file_event: str, user_wallets: dict, 
     for user_id, message in zip(user_id_list, message_list):
         # Directly use chat_id to send the message
         await send_message(user_id, context, text=message)
-        write_log(f"Sale alert sent to {user_id}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.info(f"Sale alert sent to {user_id}")
         
 def get_token_decimals(token_address):
         for token_name, data in contract_data.items():
@@ -147,7 +147,6 @@ def get_token_decimals(token_address):
 # Updated check_for_new_sales_event function
 async def check_for_new_sales_event(context: ContextTypes.DEFAULT_TYPE):
     user_wallets = context.job.data['user_wallets']
-    DataProperty = context.job.data['DataProperty']
     path_transaction_queue_folder = context.job.data['path_transaction_queue_folder']
     
     # Get the list of files in the specified folder
@@ -159,17 +158,8 @@ async def check_for_new_sales_event(context: ContextTypes.DEFAULT_TYPE):
             for file in json_files:
                 path_file_event = os.path.join(path_transaction_queue_folder, file)
                 # Trigger the asynchronous function to process the file and send messages
-                await handle_tx_and_send_messages(path_file_event, user_wallets, DataProperty, context)
+                await handle_tx_and_send_messages(path_file_event, user_wallets, context)
     
     except FileNotFoundError as e:
-        write_log(f"FileNotFoundError: {e}", "logfile/logfile_YAMSaleNotifyBot.txt")
+        logger.error(f"FileNotFoundError: {e}")
         raise FileNotFoundError(f"The folder '{path_transaction_queue_folder}' does not exist.")
-        
-if __name__ == '__main__':
-    from utilities import compute_path, load_user_wallet, load_DataProperty
-    user_wallets = load_user_wallet()
-    DataProperty = load_DataProperty()
-    path = compute_path(['DeFi', 'TelegramBot', 'YAMSaleNotifyBot', 'transactions_queue', '0x1b0d94d6567c02e40f018b683a87a7fec670e1b5a75c38588b5282ab0c159b49.json'])
-    #user_id_list, message_list = process_tx_file(path, user_wallets, DataProperty)
-    #print(message_list)
-    check_for_new_sales_event(path, user_wallets, DataProperty)

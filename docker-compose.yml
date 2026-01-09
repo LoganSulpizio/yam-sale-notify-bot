@@ -1,0 +1,16 @@
+services:
+  yam_sale_notify_bot:
+    container_name: yam_sale_notify_bot
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      RUNNING_IN_DOCKER: "1"
+    env_file:
+      - .env
+    volumes:
+      - ${YAM_INDEXING_DB_PATH}:/app/yam_indexing_db/yam_events.db:ro
+      - ./logs:/app/logs
+      - ./user_configurations:/app/user_configurations
+      - ./transactions_queue:/app/transactions_queue
+    restart: unless-stopped
