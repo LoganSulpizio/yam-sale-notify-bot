@@ -11,10 +11,10 @@
         "check_language_none": "No preferred language has been set up",
         "check_wallet": "Your wallet address is set to {user_wallet}",
         "check_wallet_none": "No wallet address has been set up",
-        "sale_message": "🔔 Sale notification 🔔\nYou sold *{amount_dec}* token(s) *{property_name}* for *{price_dec_total}* {token_name_buyer} (_offer_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nView it on [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
-        "purchase_message": "🔔 Purchase notification 🔔\nYou bought *{amount_dec}* token(s) *{property_name}* for *{price_dec}* {token_name_offer} per token (_offer_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nView it on [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "sale_message": "🔔 Sale notification 🔔\nYou sold *{amount_dec}* token(s) *{property_name}* for *{price_dec_total}* {token_name_buyer} (_offer_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nView it on [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "purchase_message": "🔔 Purchase notification 🔔\nYou bought *{amount_dec}* token(s) *{property_name}* for *{price_dec}* {token_name_offer} per token (_offer_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nView it on [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
         "total_current_sales": "*Currently listed* : *{total_number_of_token_at_sale}* token(s) for a total of *${total_at_sale}*",
-        "current_listed_offer": "[Beta] Your current listed offer(s) on the YAM:\n\n",
+        "current_listed_offer": "Your current listed offer(s) on the YAM:\n\n",
         "no_listed_offers": "No listed offer at the moment.",
         "id_icon" : "🆔",
         "house_icon" : "🏠",
@@ -23,7 +23,7 @@
         "menu_checkinfo": "ℹ️ Check your info",
         "menu_setlanguage":"🌐 Select your language",
         "menu_about":"✍️ About the Author",
-        "menu_getcurrentoffers" : "📋 [Beta] List all your current sales"
+        "menu_getcurrentoffers" : "📋 List all your current sales"
     },
     "FR": {
         "select_language_prompt": "Veuillez sélectionner votre langue:\n",
@@ -37,10 +37,10 @@
         "check_language_none": "Aucune langue préférée n'a été configurée",
         "check_wallet": "L'adresse de votre wallet est définie sur {user_wallet}",
         "check_wallet_none": "Aucun wallet n'a été configurée",
-        "sale_message": "🔔 Notification de vente 🔔\nVous avez vendu *{amount_dec}* token(s) *{property_name}* pour *{price_dec_total}* {token_name_buyer} (_offre_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nConsultez la transaction sur [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
-        "purchase_message": "🔔 Notification d'achat 🔔\nVous avez acheté *{amount_dec}* token(s) *{property_name}* pour *{price_dec}* {token_name_offer} par token (_offre_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nVoir sur [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "sale_message": "🔔 Notification de vente 🔔\nVous avez vendu *{amount_dec}* token(s) *{property_name}* pour *{price_dec_total}* {token_name_buyer} (_offre_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nConsultez la transaction sur [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "purchase_message": "🔔 Notification d'achat 🔔\nVous avez acheté *{amount_dec}* token(s) *{property_name}* pour *{price_dec}* {token_name_offer} par token (_offre_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nVoir sur [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
         "total_current_sales": "*Actuellement listés* : *{total_number_of_token_at_sale}* token(s) pour un total de *${total_at_sale}*",
-        "current_listed_offer": "[Beta] Vos ventes en cours sur le YAM:\n\n",
+        "current_listed_offer": "Vos ventes en cours sur le YAM:\n\n",
         "no_listed_offers": "Pas de ventes en cours pour le moment.",
         "id_icon" : "🆔",
         "house_icon" : "🏠",
@@ -49,7 +49,7 @@
         "menu_checkinfo": "ℹ️ Vérifier vos données",
         "menu_setlanguage":"🌐 Sélectionner votre langue",
         "menu_about":"✍️ A propos de l'auteur",
-        "menu_getcurrentoffers" : "📋 [Beta] Lister vos ventes en cours"
+        "menu_getcurrentoffers" : "📋 Lister vos ventes en cours"
     },
     "ES": {
         "select_language_prompt": "Por favor, seleccione su idioma:\n",
@@ -63,10 +63,10 @@
         "check_language_none": "No se ha configurado un idioma preferido",
         "check_wallet": "La dirección de su wallet está configurada en {user_wallet}",
         "check_wallet_none": "No se ha configurado ninguna wallet",
-        "sale_message": "🔔 Notificación de venta 🔔\nHa vendido *{amount_dec}* token(s) *{property_name}* por *{price_dec_total}* {token_name_buyer} (_oferta_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nConsulte la transacción en [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
-        "purchase_message": "🔔 Notificación de compra 🔔\nHas comprado *{amount_dec}* token(s) de *{property_name}* por *{price_dec}* {token_name_offer} por token (_oferta_ [{offerId}](https://yambyofferid.netlify.app/?offerId={offerId}))\nVer en [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "sale_message": "🔔 Notificación de venta 🔔\nHa vendido *{amount_dec}* token(s) *{property_name}* por *{price_dec_total}* {token_name_buyer} (_oferta_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nConsulte la transacción en [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
+        "purchase_message": "🔔 Notificación de compra 🔔\nHas comprado *{amount_dec}* token(s) de *{property_name}* por *{price_dec}* {token_name_offer} por token (_oferta_ [{offerId}](https://yam.realtoken.network/offer/{offerId}))\nVer en [Gnosisscan](https://gnosisscan.io/tx/{tx_hash})",
         "total_current_sales": "*Actualmente listados* : *{total_number_of_token_at_sale}* token(s) por un total de *${total_at_sale}*",
-        "current_listed_offer": "[Beta] Vos ventas en curso en el YAM:\n\n",
+        "current_listed_offer": "Vos ventas en curso en el YAM:\n\n",
         "no_listed_offers": "Actualmente no hay ventas en curso.",
         "id_icon" : "🆔",
         "house_icon" : "🏠",
@@ -75,6 +75,6 @@
         "menu_checkinfo": "ℹ️ Verificar su información",
         "menu_setlanguage": "🌐 Seleccionar su idioma",
         "menu_about": "✍️ Acerca del autor",
-        "menu_getcurrentoffers" : "📋 [Beta] Liste todas sus ventas actuales"
+        "menu_getcurrentoffers" : "📋 Liste todas sus ventas actuales"
     }
 }
