@@ -109,14 +109,8 @@ def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: di
 
     logger.info(f"{tx_hash} has been processed")
     
-    # delete file when it has been processed
-    #os.remove(path_file_event)
-
-    # Check if the destination file exists
-    #destination = os.path.join('logfile', os.path.basename(path_file_event))
-    #if os.path.exists(destination):
-    #    os.remove(destination)  # Remove the existing file
-    #shutil.move(path_file_event, 'logfile')
+    # delete JSON file when it has been processed
+    os.remove(path_file_event)
             
     if len(user_id_list) > 0:
         return user_id_list, message_list

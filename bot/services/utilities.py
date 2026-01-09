@@ -5,6 +5,10 @@ from web3 import Web3
 from bot.config.settings import USER_PREF_LANGUAGE_FILE, USER_WALLET_FILE, BLOCKCHAIN_RESSOURCES, TRANSLATIONS_PATH
 from typing import Any, Dict, List, Optional
 
+# Telegram hard limit for message text
+TELEGRAM_MAX_LENGTH = 4096
+TRUNCATION_NOTICE = "\n⚠️ Too many offers to be displayed"
+
 # Language mapping dictionary
 language_mapping = {
     '1': 'EN',
@@ -58,10 +62,22 @@ def save_user_wallet(user_wallet):
 # Function to send messages with specific parameters
 async def send_message(chat_id: int, context, text: str):
     params = {
-        'disable_web_page_preview': True,
-        'parse_mode': 'Markdown'
+        "disable_web_page_preview": True,
+        "parse_mode": "Markdown",
     }
-    await context.bot.send_message(chat_id=chat_id, text=text, **params)
+
+    if len(text) > TELEGRAM_MAX_LENGTH and "🆔" in text:
+        
+        text = text[:TELEGRAM_MAX_LENGTH].rstrip()
+        cutoff = text.rfind("🆔", 0, text.rfind("🆔"))
+        text = text[:cutoff]
+        text += TRUNCATION_NOTICE
+
+    await context.bot.send_message(
+        chat_id=chat_id,
+        text=text,
+        **params
+    )
 
 def list_to_dict_by_uuid(items: Optional[List[Dict[str, Any]]]) -> Optional[Dict[str, Dict[str, Any]]]:
     """

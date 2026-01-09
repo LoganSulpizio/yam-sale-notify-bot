@@ -1,18 +1,14 @@
-import sys
-import os
-
-import asyncio
-import time
 from web3 import Web3
-from web3.exceptions import Web3RPCError
-from typing import List, Optional, Tuple, Any
-
+from typing import List, Tuple, Any
+from bot.services.w3_handler import w3_handler
 from bot.services.logging_config import get_logger
-logger = get_logger("bot.main")
+logger = get_logger(__name__)
 
 from bot.services.utilities import load_blockchain_ressources
 contract_data = load_blockchain_ressources()
-    
+
+
+@w3_handler()    
 def get_offers_multicall(w3: Web3, offer_ids: List[int]) -> List[List[Any]]:
     """
     Fetch multiple offers in a single request using Multicall3 from the YAM contract.

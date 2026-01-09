@@ -4,7 +4,7 @@ from bot.services.utilities import translations, language_mapping, save_user_lan
 import asyncio
 
 from bot.services.logging_config import get_logger
-logger = get_logger("bot.main")
+logger = get_logger(__name__)
 
 # Conversation states
 LANGUAGE_SELECTION = 1

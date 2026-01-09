@@ -2,8 +2,6 @@
 """Application configuration and constants"""
 from pathlib import Path
 
-DEFAULT_LANGUAGE = "English"  # Fallback language
-
 # RealToken public endpoints
 REALTOKENS_LIST_URL = "https://api.realtoken.community/v1/token"
 
