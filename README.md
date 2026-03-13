@@ -28,13 +28,15 @@ You can also use the bot to list and track your **current active sales** directl
 
 ## Operational requirements
 
-The bot does not scan or index the blockchain itself. Instead, it relies on pre-processed YAM activity data exposed as JSON files written to the `transaction_queue/` directory.
-The bot continuously monitors this directory and reacts to newly available files by sending Telegram notifications accordingly.
+The bot does **not scan or index the blockchain itself**. Instead, it relies on pre-processed YAM activity data produced by the [yam-indexing](https://github.com/RealToken-Community/yam-indexing) project.
 
-The [yam-indexing](https://github.com/RealToken-Community/yam-indexing) project is responsible for generating and writing the required JSON files to the appropriate directory and must be running alongside the yam-sale-notify-bot.
+The [yam-indexing](https://github.com/RealToken-Community/yam-indexing) service is responsible for indexing blockchain events and storing selected ones in the PostgreSQL table `event_queue`.
 
-Each file must contain a JSON payload with the following structure (example below):
-```json
+The **yam-sale-notify-bot** reads new entries from this table and sends Telegram notifications accordingly.
+
+Each row in the table contains a `payload` column (`JSONB`) with the serialized event data, for example:
+
+``` json
 {
     "offerToken": "0x86b4f8135A39DC349A963969F33C3D030726cf61",
     "price": 60992674,
@@ -49,6 +51,9 @@ Each file must contain a JSON payload with the following structure (example belo
     "buyerToken": "0xDDAfbb505ad214D7b80b1f830fcCc89B60fb7A83"
 }
 ```
+
+The [yam-indexing](https://github.com/RealToken-Community/yam-indexing) service must therefore be running alongside the bot
+and configured to export events to the `event_queue` table.
 
 ---
 
