@@ -2,6 +2,7 @@ from telegram import Update
 from telegram.ext import ContextTypes, ConversationHandler
 from eth_utils import is_address, to_checksum_address
 from bot.yam_indexing_db_handler.get_all_offer_ids_by_seller import get_all_offer_ids_by_seller
+from bot.services.get_pg_connection import get_pg_connection
 from bot.offer_handlers.get_offer import get_offers_multicall
 from bot.core.handle_raw_offer import handle_raw_offer
 from bot.bot_handlers.language_handlers import translate, get_user_languages, setlanguage
@@ -40,17 +41,20 @@ async def about(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
     await send_message(user_id, context, about_message)
 
 # Function to handle the /getcurrentoffers command
-async def getcurrentoffers(update: Update, context: ContextTypes.DEFAULT_TYPE, db_path:str) -> None:
+async def getcurrentoffers(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
 
-    # load from application realtoken data
+    # load from application realtoken data and postgres data
     realtoken_data = context.application.bot_data["realtokens"]
+    postgres_data = context.bot_data["POSTGRES_DATA"]
 
     user_id = update.effective_user.id
     user_wallet = user_wallets.get(user_id, None)
 
     logger.info(f"getcurrentoffers used by user {user_id}")
 
-    offer_ids = get_all_offer_ids_by_seller(db_path, user_wallet, ['InProgress'])
+    with get_pg_connection(*postgres_data) as pg_conn:
+        offer_ids = get_all_offer_ids_by_seller(pg_conn, user_wallet, ['InProgress'])
+    
     raw_offers = get_offers_multicall(offer_ids=offer_ids)
 
     message = '*' + translate(user_id, 'current_listed_offer') + '*'

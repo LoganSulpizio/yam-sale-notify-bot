@@ -1,25 +1,24 @@
-import os
+from __future__ import annotations
 
-if __name__ == '__main__':
-    import sys
-    sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
-
+from typing import Any, Dict, Optional, Tuple
+import psycopg2
+from psycopg2.extensions import connection as PGConnection
 from telegram.ext import ContextTypes
 from bot.bot_handlers.language_handlers import translate
 from bot.services.utilities import send_message, load_blockchain_ressources
-import json
+from bot.services.get_pg_connection import get_pg_connection
+from bot.services.send_telegram_alert import send_telegram_alert
 
 from bot.services.logging_config import get_logger
 logger = get_logger(__name__)
 
 contract_data = load_blockchain_ressources()
 
+MAX_EVENTS_PER_RUN = 15
+
 
 # Read the tx json files
-def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: dict):
-    
-    with open(path_file_event, 'r') as file:
-        data = json.load(file)
+def process_tx_file(data: dict, user_wallets: dict, realtoken_data: dict):
 
     seller = data['seller']
     offerToken = data['offerToken']
@@ -48,7 +47,9 @@ def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: di
             '0x0cA4f5554Dd9Da6217d62D8df2816c82bba4157b', # ARMMV3WXDAI
         ]
 
-        if buyerToken in stablecoin_YAM:
+        if buyerToken in stablecoin_YAM and offerToken in stablecoin_YAM:
+            mode = 3 # exchange bewteen two stable (exemple: ARMMV3USDC / USDC)
+        elif buyerToken in stablecoin_YAM:
             mode = 1
         elif offerToken in stablecoin_YAM:
             mode = 2
@@ -107,10 +108,31 @@ def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: di
                                     )
                 message_list.append(message)
 
+        if mode == 3: # Exchange offer
+            token_buyer_decimals, token_buyer_name = get_token_decimals(buyerToken)
+            token_offer_decimals, token_offer_name = get_token_decimals(offerToken)
+
+            amount_dec = amount / 10 ** token_buyer_decimals
+            price_dec_per_token = price / 10 ** token_offer_decimals
+
+            price_dec_total = round(price_dec_per_token * amount_dec, 2)
+            amount_dec = round(amount_dec, 2)
+
+
+            for user_id in user_id_list:
+                message = translate(user_id,
+                                    'sale_message',
+                                    amount_dec = amount_dec,
+                                    price_dec_total = price_dec_total,
+                                    property_name = token_offer_name,
+                                    token_name_buyer = token_buyer_name,
+                                    tx_hash = tx_hash,
+                                    offerId = offerId
+                                    )
+                message_list.append(message)
+
+
     logger.info(f"{tx_hash} has been processed")
-    
-    # delete JSON file when it has been processed
-    os.remove(path_file_event)
             
     if len(user_id_list) > 0:
         return user_id_list, message_list
@@ -120,12 +142,12 @@ def process_tx_file(path_file_event: str, user_wallets: dict, realtoken_data: di
         
 
 # Asynchronous function to send the messages
-async def handle_tx_and_send_messages(path_file_event: str, user_wallets: dict, context: ContextTypes.DEFAULT_TYPE):
+async def handle_tx_and_send_messages(json_payload: dict, user_wallets: dict, context: ContextTypes.DEFAULT_TYPE):
 
     # load from application realtoken data
     realtoken_data = context.application.bot_data["realtokens"]
     
-    user_id_list, message_list = process_tx_file(path_file_event, user_wallets, realtoken_data)
+    user_id_list, message_list = process_tx_file(json_payload, user_wallets, realtoken_data)
 
     # Check if the lists are None
     if user_id_list is None or message_list is None:
@@ -147,19 +169,80 @@ def get_token_decimals(token_address):
 # Updated check_for_new_sales_event function
 async def check_for_new_sales_event(context: ContextTypes.DEFAULT_TYPE):
     user_wallets = context.job.data['user_wallets']
-    path_transaction_queue_folder = context.job.data['path_transaction_queue_folder']
-    
-    # Get the list of files in the specified folder
-    try:
-        with os.scandir(path_transaction_queue_folder) as entries:
-            json_files = [entry.name for entry in entries if entry.name.endswith('.json')]
+    postgres_data = context.bot_data["POSTGRES_DATA"]
+
+    processed_count = 0
+    from pprint import pprint
+
+    with get_pg_connection(*postgres_data) as pg_conn:
         
-        if json_files:
-            for file in json_files:
-                path_file_event = os.path.join(path_transaction_queue_folder, file)
-                # Trigger the asynchronous function to process the file and send messages
-                await handle_tx_and_send_messages(path_file_event, user_wallets, context)
+        while processed_count < MAX_EVENTS_PER_RUN:
+            row = fetch_one_event_queue_row(pg_conn)
     
-    except FileNotFoundError as e:
-        logger.error(f"FileNotFoundError: {e}")
-        raise FileNotFoundError(f"The folder '{path_transaction_queue_folder}' does not exist.")
+            if row is None:
+                #if table is empty, we leave
+                break
+    
+            event_id, created_at, json_payload = row
+    
+            try:
+                await handle_tx_and_send_messages(json_payload, user_wallets, context)
+
+                delete_event_by_id(pg_conn, event_id)
+                pg_conn.commit()
+                processed_count += 1
+    
+            except Exception as e:
+                pg_conn.rollback()
+                logger.exception(f"Failed processing event_queue id={event_id}")
+                send_telegram_alert(f"Failed processing event_queue id={event_id}")
+                break
+    
+    
+def fetch_one_event_queue_row(pg_conn: PGConnection) -> Optional[Tuple[int, Any, Dict[str, Any]]]:
+    """
+    Fetch (and return) one row from public.event_queue if at least one exists.
+
+    Returns:
+        None if the table is empty, otherwise a tuple:
+            (id, created_at, payload)
+
+        - id: int
+        - created_at: datetime (timezone-aware)
+        - payload: dict (decoded from JSONB by psycopg2)
+
+    """
+    sql = """
+        SELECT id, created_at, payload
+        FROM public.event_queue
+        ORDER BY id ASC
+        LIMIT 1
+    """
+
+    # Using a cursor context manager ensures the cursor is closed properly.
+    with pg_conn.cursor() as cur:
+        cur.execute(sql)
+        row = cur.fetchone()
+
+    # row is either None (empty table) or a 3-tuple (id, created_at, payload)
+    return row
+
+def delete_event_by_id(pg_conn: PGConnection, event_id: int) -> None:
+    """
+    Delete one row from public.event_queue by its id.
+
+    Args:
+        pg_conn: Active PostgreSQL connection.
+        event_id: ID of the event to delete.
+
+    Notes:
+        - This function does NOT commit automatically.
+        - Caller is responsible for calling pg_conn.commit().
+    """
+    sql = """
+        DELETE FROM public.event_queue
+        WHERE id = %s
+    """
+
+    with pg_conn.cursor() as cur:
+        cur.execute(sql, (event_id,))

@@ -1,35 +1,58 @@
-import sqlite3
+from __future__ import annotations
+
 from typing import List, Dict, Any, Optional
+from psycopg2.extensions import connection as PGConnection
 
-def get_all_events_by_offer_id(db_path: str, offer_id: int) -> List[Optional[Dict[str, Any]]]:
-    
-    # Connect to the SQLite database (it will create the database file if it doesn't exist)
-    conn = sqlite3.connect(db_path)
 
-    # Set the row factory to sqlite3.Row
-    conn.row_factory = sqlite3.Row
+def get_all_events_by_offer_id(
+    pg_conn: PGConnection,
+    offer_id: int,
+) -> List[Optional[Dict[str, Any]]]:
+    """
+    Retrieve the base offer row and all related offer_events for a given offer_id (PostgreSQL).
 
-    # Create a cursor object to execute SQL queries
-    cursor = conn.cursor()
+    Args:
+        pg_conn: An opened psycopg2 PostgreSQL connection.
+        offer_id: The offer ID.
 
-    # Query to get the offer from the offers table
-    cursor.execute("SELECT * FROM offers WHERE offer_id = ?", (offer_id,))
-    offer_base = cursor.fetchone()
-    
-    # Convert the Row object to a dictionary for the offer
-    offer_base_dict = dict(offer_base) if offer_base else None
+    Returns:
+        A list containing:
+            - the offer row as a dict (if exists)
+            - followed by all related event rows as dicts
+        If the offer does not exist, only the event rows are returned.
+    """
 
-    # Query to get all events related to the offer_id from the offer_events table
-    cursor.execute("SELECT * FROM offer_events WHERE offer_id = ?", (offer_id,))
-    offer_events = cursor.fetchall()
+    with pg_conn.cursor() as cursor:
+        # Get column names automatically from cursor.description
+        def fetch_one_as_dict() -> Optional[Dict[str, Any]]:
+            row = cursor.fetchone()
+            if row is None:
+                return None
+            columns = [desc[0] for desc in cursor.description]
+            return dict(zip(columns, row))
 
-    # Convert the Row objects to dictionaries for the events
-    offer_event_dicts = [dict(row) for row in offer_events]
+        def fetch_all_as_dicts() -> List[Dict[str, Any]]:
+            rows = cursor.fetchall()
+            columns = [desc[0] for desc in cursor.description]
+            return [dict(zip(columns, row)) for row in rows]
 
-    # Close the connection
-    conn.close()
+        # Query base offer
+        cursor.execute(
+            "SELECT * FROM offers WHERE offer_id = %s",
+            (offer_id,),
+        )
+        offer_base_dict = fetch_one_as_dict()
 
-    # Combine the offer dictionary and the list of event dictionaries
-    result = [offer_base_dict] + offer_event_dicts if offer_base_dict else offer_event_dicts
+        # Query related events
+        cursor.execute(
+            "SELECT * FROM offer_events WHERE offer_id = %s",
+            (offer_id,),
+        )
+        offer_event_dicts = fetch_all_as_dicts()
 
-    return result
+    # Same behavior as your SQLite version
+    return (
+        [offer_base_dict] + offer_event_dicts
+        if offer_base_dict
+        else offer_event_dicts
+    )

@@ -4,6 +4,7 @@ from bot.services.utilities import load_user_languages, load_user_wallet, list_t
 from bot.services.fetch_json import fetch_json
 from bot.services.send_telegram_alert import send_telegram_alert
 from bot.services.error_handler import global_error_handler
+from bot.services.get_pg_connection import test_postgres_connection
 from bot.bot_handlers.language_handlers import setlanguage, handle_language_selection, cancel, LANGUAGE_SELECTION, initialize_user_languages, reinitialize_user_commands
 from bot.bot_handlers.handlers import start, about, setwallet, handle_wallet_input, checkinfo, WALLET_INPUT, initialize_user_wallet, getcurrentoffers
 from bot.core.process_tx_file import check_for_new_sales_event
@@ -21,23 +22,27 @@ logger = get_logger("bot.main")
 from dotenv import load_dotenv
 load_dotenv()
 
+TOKEN_YAM_SALE_NOTIFY_BOT = os.environ["YAM_SALE_NOTIFY_BOT_TOKEN"]
+POSTGRES_DB = os.getenv("POSTGRES_DB")
+POSTGRES_HOST = os.getenv("POSTGRES_HOST")
+POSTGRES_PORT = os.getenv("POSTGRES_PORT")
+POSTGRES_EVENT_QUEUE_USER_NAME = os.getenv("POSTGRES_EVENT_QUEUE_USER_NAME")
+POSTGRES_EVENT_QUEUE_USER_PASSWORD = os.getenv("POSTGRES_EVENT_QUEUE_USER_PASSWORD")
+POSTGRES_DATA = [POSTGRES_HOST, POSTGRES_PORT, POSTGRES_DB, POSTGRES_EVENT_QUEUE_USER_NAME, POSTGRES_EVENT_QUEUE_USER_PASSWORD]
+
 # Suppress PTBUserWarning related to CallbackQueryHandler
 filterwarnings(action="ignore", message=r".*CallbackQueryHandler", category=PTBUserWarning)
 
 def main() -> None:
 
-    token_yam_sale_notify_bot = os.environ["YAM_SALE_NOTIFY_BOT_TOKEN"]
-    RUNNING_IN_DOCKER = os.getenv("RUNNING_IN_DOCKER") == "1"
-    if RUNNING_IN_DOCKER:
-         db_path = "yam_indexing_db/yam_events.db"
-    else:
-         db_path = os.environ["YAM_INDEXING_DB_PATH"]
+    if not test_postgres_connection(POSTGRES_DATA):
+        raise RuntimeError("Database connection failed")
 
     # Build the Telegram application
     job_queue = JobQueue()
     application = (
         Application.builder()
-        .token(token_yam_sale_notify_bot)
+        .token(TOKEN_YAM_SALE_NOTIFY_BOT)
         .job_queue(job_queue)
         .post_shutdown(on_post_shutdown)
         .build()
@@ -61,8 +66,10 @@ def main() -> None:
     # Register the global error handler
     application.add_error_handler(global_error_handler)
 
-     # Store services in bot_data so all handlers can access them
+    # Store services in bot_data so all handlers can access them
     application.bot_data["realtokens"] = realtoken_data
+    application.bot_data["POSTGRES_DATA"] = POSTGRES_DATA
+
     
     # Register the conversation handler for /setlanguage and /start
     conv_handler = ConversationHandler(
@@ -81,7 +88,7 @@ def main() -> None:
     # Register the /about command handler
     application.add_handler(CommandHandler("about", about))
     # Register the /currentsales command handler
-    application.add_handler(CommandHandler("getcurrentoffers", partial(getcurrentoffers, db_path=db_path)))
+    application.add_handler(CommandHandler("getcurrentoffers", partial(getcurrentoffers)))
     # Register the /checkinfo command handler
     application.add_handler(CommandHandler("checkinfo", checkinfo))
     # Register the conversation handler for /setwallet
@@ -103,7 +110,6 @@ def main() -> None:
         name="check for new sales event job",
         data={
             'user_wallets': user_wallets,  # Passes user_wallets to the job's context
-            'path_transaction_queue_folder': 'transactions_queue/'  # Passes the folder path to the job's context
         }
     )
 
@@ -116,7 +122,6 @@ def main() -> None:
     )
 
     logger.info("Starting bot polling…")
-    print("Starting bot polling…")
     send_telegram_alert("Yam sale notify bot: Starting bot polling…")
     application.run_polling()
 
